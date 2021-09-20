@@ -1,0 +1,7 @@
+# College-SOS-Project
+Evaluating College Strength of Schedule as a Heuristic for NBA Draft Scouting
+
+
+Among NBA draft circles, scouts can often get caught up in certain heuristics - or judgements of players before actually observing them play. One of the more notorious examples of recent heuristics - college strength of schedule - is often a hot-button topic when discussing potential draftees, particularly those who come from mid-major schools. In recent years, players such as Ja Morant and Grant Riller, or more recently Patrick Baldwin Jr., have emerged as legitimate pro prospects despite playing at a lower level of competition. In response, many in the draft community, including myself, have discounted some of their college accomplishments by citing the low quality of opposition these players face on a nightly basis.
+
+In this project, I will seek to answer the question of whether or not college strength of schedule (referred from here on out as “SOS”) should really be a potential consideration for NBA scouts, or if it really is extraneous (i.e. the idea that “talent translates regardless of level”). SOS data was scraped from basketball-reference using the BeautifulSoup package in Python, DARKO metrics were downloaded from Kostya Medvedovsky’s shiny site (linked at the end of this document), and LEBRON data collected from Bball Index. Data was obtained for every player drafted since 2010.
