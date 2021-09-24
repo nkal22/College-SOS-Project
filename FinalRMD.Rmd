@@ -1,0 +1,250 @@
+---
+title: "They Haven't Played Anybody - Does College Strength of Schedule Really Matter When Evaluating NBA Prospects?"
+author: "Nick Kalinowski"
+date: "9/15/2021"
+output:
+  html_document:
+    toc: TRUE
+    theme: united
+    toc_float: TRUE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(DT)
+library(tidyverse)
+library(ggplot2)
+library(class)
+library(caret)
+library(kableExtra)
+library(knitr)
+library(rmarkdown)
+library(plotly)
+```
+
+
+```{r, echo=FALSE, out.width="70%", fig.cap="Ja Morant and Dylan Windler, two of the most recent mid-major stars to be first round NBA Draft Picks.", fig.align = 'center'}
+knitr::include_graphics("https://www.dailyrepublicannews.com/apps/pbcsi.dll/storyimage/IO/20200707/SPORTS/200709948/AR/0/AR-200709948.jpg&updated=202007071720&MaxW=800&maxH=800&noborder")
+```
+
+
+## Overview
+
+Among NBA draft circles, scouts can often get caught up in certain heuristics - or judgements of players before actually observing them play. One of the more notorious examples of recent heuristics - college strength of schedule -  is often a hot-button topic when discussing potential draftees, particularly those who come from mid-major schools. In recent years, players such as Ja Morant and Grant Riller, or more recently Patrick Baldwin Jr., have emerged as legitimate pro prospects despite playing at a lower level of competition. In response, many in the draft community, including myself, have discounted some of their college accomplishments by citing the low quality of opposition these players face on a nightly basis. 
+
+In this project, I will seek to answer the question of whether or not college strength of schedule (referred from here on out as "SOS") should really be a potential consideration for NBA scouts, or if it really is extraneous (i.e. the idea that "talent translates regardless of level"). SOS data was scraped from basketball-reference using the BeautifulSoup package in Python, DARKO metrics were downloaded from Kostya Medvedovsky's shiny site (linked at the end of this document), and LEBRON data collected from Bball Index. Data was obtained for every player drafted since 2010. 
+
+## General Facts About the Dataset
+
+In total, the dataset includes 532 players, all of whom played at least one game at a NCAA Division 1 University. Since data was not available for junior colleges or non-Division 1 institutions, these players were omitted. The SOS data metric collected was the one for a player's entire career, rather than a single season, to average out any differences that may exist between any multi-year college player's career, as well as factor in any other variables such as transferring schools. 
+
+
+The below table lists the complete results of the data scraped from basketball-reference: 
+
+```{r echo=FALSE}
+nba_data = read.csv("NewNBADraftData.csv")
+
+paged_table(nba_data)
+```
+
+Let's take a look at how some of the basic stats regress against college SOS. The scraped data includes metrics such as minutes played, games played, points, rebounds, assists, and win shares. 
+
+The distribution of SOS among the prospects, grouped by total NBA minutes played, can be displayed as follows. We can see a very slight negative trend among the data here, but that is likely due to the larger sample size present among players with a college SOS of greater than 5, although it is interesting to observe that a greater percentage of "NBA-quality" mid-major players succeed than their power-conference counterparts. 
+
+We can also observe some of the notable outliers are labeled in the graph as well. Kyle O'Quinn had the lowest college SOS of any player in the dataset at -7.19, whereas Jarrett Allen had the highest at 12.75. Kelly Oubre Jr. and Udoka Azubuike faced similarly strong competition during their respective tenures at Kansas, but while Oubre has succeeded in finding his footing as an NBA role player, Azubuike has barely made it out of the G-League. Of all the players in the set, Derrick Favors has played in the most NBA games at 751.
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+nba_data$MP <- as.numeric(nba_data$MP)
+fit2 <- lm(G ~ sos, data = nba_data)
+#ggplot(nba_data,
+#       aes(x = sos, y = G)) +
+#  geom_point(size = 1.5)+ labs(y= "NBA Total Games Played", x = "College Strength of Schedule") +
+#  ggtitle("NBA Games Played of Drafted Players by College Strength of Schedule") + geom_text(aes(label=ifelse(G > 750 | sos > 12 | G > 610 & sos < 5,as.character(Player),'  ')),hjust=1, vjust=1) + geom_text(aes(label=ifelse(sos < -7 ,as.character(Player),'  ')),hjust=0, vjust=.1) + geom_smooth(method = "lm", formula = y~x)
+
+fig <- plot_ly(
+  nba_data, x = ~sos, y = ~G,
+  # Hover text
+  text = ~paste("Name:", Player, '<br>College:', College, '<br>Pick:', Pk),
+  color = ~Pk
+)
+
+fig
+
+fit2
+
+```
+
+Likewise, for the fun of it, let's regress PPG against SOS. This graph doesn't really mean much in determining NBA effectiveness, but it does show that most volume scorers (with a few notable exceptions, like Lillard and George), come from power conference programs, as shown by the more evident positive trend among the data. That being said, there are many better metrics which we can explore to further prove or disprove our argument.
+
+One interesting observation that stands out from this graph, although an intuitive one, is that higher picks (labeled by purple dots) tend to be the higher scoring players, regardless of college.
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+#ggplot(nba_data,
+ #      aes(x = sos, y = PPG)) +
+  #geom_point(size = 1.5)+ labs(y= "NBA Points Per Game", x = "College Strength of Schedule") +
+  #ggtitle("NBA PPG of Drafted Players by College Strength of Schedule") + geom_text(aes(label=ifelse(PPG > 24.5 | sos > 12 | PPG > 15 & sos < 5,as.character(Player),'  ')),hjust=1, vjust=1) + geom_text(aes(label=ifelse(sos < -7 ,as.character(Player),'  ')),hjust=0, vjust=-.1) + geom_smooth(method = "lm", formula = y~x)
+
+
+nba_data$PPG[is.na(nba_data$PPG)] <- 0
+#nba_data$sos[is.na(nba_data$sos)] <- 0
+fit <- lm(PPG ~ sos, data = nba_data)
+
+#nba_data1 <- nba_data %>% drop_na(sos)
+
+fig2 <- plot_ly(
+  nba_data, x = ~sos, y = ~PPG,
+  # Hover text
+  text = ~paste("Name:", Player, '<br>College:', College, '<br>Pick:', Pk),
+  color = ~Pk
+) 
+
+#%>% 
+ # add_trace(data = nba_data, x = nba_datasos, y = fitted(fit), mode = "lines")
+
+fig2
+
+fit
+```
+
+## Measurements of NBA Effectiveness
+
+```{r, echo=FALSE, out.width="100%", fig.cap="LeBron James and Darko Milicic", fig.align = 'center'}
+knitr::include_graphics("https://images2.minutemediacdn.com/image/upload/c_fill,w_720,ar_16:9,f_auto,q_auto,g_auto/shape/cover/sport/Minnesota-Timberwolves-v-Miami-Heat-092e46ea9e10110612fa0adfc28d5284.jpg")
+```
+
+### DARKO
+
+Now that we have a general idea of what the dataset looks like and how it behaves, we will combine it with a couple of metrics which the NBA analytics community regard as the best that are publicly available. The first one we will consider is DARKO, or Daily Adjusted and Regressed Kalman Optimized projections. Developed by Kostya Medvedovsky, DARKO uses game data to build an accurate model of player peformance, with more weighting given to recent performances. DPM, the main stat based off the DARKO model, attempts to predict a player's future production given all of his past games. It is continually updated and refined as a player participates in more games.
+
+Thanks to Kostya for making his DARKO data available to download from his shiny site, which can be found here: 
+
+https://apanalytics.shinyapps.io/DARKO/
+
+### LEBRON
+
+The other metric I considered for this project was LEBRON, or Luck-adjusted player Estimate using a Box prior Regularized ON-off. LEBRON is a box-score based metric which evaluates offensive and defensive impact through RAPM-inspired on court/off court contrast. As a result, LEBRON outputs a comprehensive measurement of player impact when on the court, with adjustments for any variance or luck. 
+
+A more comprehensive explanation of the LEBRON metric can be found on BBall Index's website, which is also where my dataset came from.
+
+https://www.bball-index.com/lebron-introduction/
+
+## Data Visualizations
+
+```{r, echo=FALSE, out.width="100%", fig.cap="Damian Lillard", fig.align = 'center'}
+knitr::include_graphics("https://sports.cbsimg.net/images/visual/whatshot/lillard1us-blog.jpg")
+```
+
+### DARKO
+
+Unfortunately, the publicly available DARKO data only includes active NBA players, so a large percentage of the dataset had to be factored out in order to perform analysis. With only 280 observations to choose from, we may not get an perfectly full picture of NBA production, but we can still make some conclusions from the resulting data. Superstars come from all across the SOS spectrum, with Damian Lillard (Weber State), Paul George (Fresno State), Kawhi Leonard (San Diego State), and Joel Embiid (Kansas) being the only four players with a DPM > 4. That being said, something interesting to note is only one of these players - Embiid - comes from a traditional "power conference" school. However, shifting the cutoff from DPM > 4 to DPM > 2 greatly increases the percentage of Power-6 players. 
+
+Overall, a simple linear regression reveals no real trend between SOS and DPM, supporting the "talent transcends competition" argument presented at the beginning of the project.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+darko_data = read.csv("DataWithDARKO.csv")
+fig3 <- plot_ly(
+  darko_data, x = ~sos, y = ~DPM,
+  # Hover text
+  text = ~paste("Name:", Player, '<br>College:', College, '<br>Pick:', Pk),
+  color = ~Pk
+)
+
+fig3
+
+fit3 <- lm(DPM ~ sos, data = darko_data)
+
+fit3
+
+
+```
+
+### LEBRON
+
+In contrast to DARKO, the LEBRON dataset includes historical data, so we can include the full group of players in our analysis. Likewise, it can also be divided into offensive and defensive-specific metrics - conventiently named "O-LEBRON" and "D-LEBRON" - so we can study players' impacts on each end of the floor. Only three players - Embiid, Leonard, and Kentucky's Anthony Davis, have a career LEBRON > 4, and no real trend can be seen here either. If we consider "success" to be a LEBRON rating of > 0, the "success rate" of NBA prospects seems to be pretty similar across the board. This can be seen for LEBRON and its subsidiaries O-LEBRON and D-LEBRON. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+lebron_data = read.csv("DataWithLEBRON.csv")
+lebron_data$Career.LEBRON <- as.numeric(levels(lebron_data$Career.LEBRON))[lebron_data$Career.LEBRON]
+
+fig6 <- plot_ly(
+  lebron_data, x = ~sos, y = ~Career.LEBRON,
+  # Hover text
+  text = ~paste("Name:", Player, '<br>College:', College, '<br>Pick:', Pk),
+  color = ~Pk
+)
+
+fig6
+
+fit6 <- lm(Career.LEBRON ~ sos, data = lebron_data)
+
+fit6
+
+
+```
+
+
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+fig4 <- plot_ly(
+  lebron_data, x = ~sos, y = ~Career.O.LEBRON,
+  # Hover text
+  text = ~paste("Name:", Player, '<br>College:', College, '<br>Pick:', Pk),
+  color = ~Pk
+)
+
+fig4
+
+fit4 <- lm(Career.O.LEBRON ~ sos, data = lebron_data)
+
+fit4
+
+
+```
+
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+fig5 <- plot_ly(
+  lebron_data, x = ~sos, y = ~Career.D.LEBRON,
+  # Hover text
+  text = ~paste("Name:", Player, '<br>College:', College, '<br>Pick:', Pk),
+  color = ~Pk
+)
+
+fig5
+
+fit5 <- lm(Career.D.LEBRON ~ sos, data = lebron_data)
+
+fit5
+
+
+```
+
+
+## Conclusions And Future Projects
+
+All that said, no observable trend could be seen between college strength of schedule and any of the metrics, both standard and advanced, applied to the data. The initial results suggest that the "strength of schedule" heuristic should not be considered as part of the scouting process, as success rates across the board seem to be similar regardless of college SOS. That being said, additional metrics could be applied to this data other that the simple linear regressions I performed, including placing a weighted scale on draft selection (i.e. is taking a mid-major player with a higher pick a good idea), and providing additional data to take into account situation (maybe previous season wins or coach continuity stats). This project served only as an introduction to the larger question at hand, and probably shouldn't be treated as a be-all, end-all solution. However, it does provide confirmation that heuristics in basketball scouting are often near-sighted, and need to be eliminated from the evaluation process as much as possible.
+
+
+## Acknowledgements
+
+```{r, echo=FALSE, out.width="100%", fig.cap="Grant Riller", fig.align = 'center'}
+knitr::include_graphics("https://thumbor.forbes.com/thumbor/960x0/https%3A%2F%2Fspecials-images.forbesimg.com%2Fimageserve%2F5fb475939a60f93b82937fc2%2FNCAA-BASKETBALL--DEC-15-Charleston-at-East-Carolina%2F960x0.jpg%3Ffit%3Dscale")
+```
+
+Several key people were incredibly helpful to this project, including:
+
+- Joseph Nation, for breaking down the metrics I would need to best answer the question at hand
+- My roommate, Samer, for helping me figure out what the hell was going wrong with my Python scraper
+- Grant Riller, without whose polarizing discussion I never would've further explored this question
+
+
+
